@@ -1,0 +1,805 @@
+{
+  "name": "Integrated Manufacturing Operations and Predictive Maintenance Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "maintenance-sensor-data",
+        "options": {}
+      },
+      "id": "ed3d97c8-f321-4a90-a21c-94349f16ff27",
+      "name": "Maintenance Sensor Data Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -2480,
+        472
+      ],
+      "webhookId": "ebb9c7f7-d768-4724-bfbc-da73936c9097"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "riskThreshold",
+              "value": 0.7,
+              "type": "number"
+            },
+            {
+              "id": "id-2",
+              "name": "erpApiUrl",
+              "value": "https://api.example.com/erp",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "dashboardApiUrl",
+              "value": "https://api.example.com/dashboard",
+              "type": "string"
+            },
+            {
+              "id": "id-4",
+              "name": "supervisorEmail",
+              "value": "supervisor@company.com",
+              "type": "string"
+            },
+            {
+              "id": "id-5",
+              "name": "qualityEngineerEmail",
+              "value": "quality@company.com",
+              "type": "string"
+            },
+            {
+              "id": "id-6",
+              "name": "customerEmailField",
+              "value": "customerEmail",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "2c37e823-68dc-425d-bd4f-505e4a048e99",
+      "name": "Workflow Configuration",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2256,
+        472
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Validate sensor data\nconst item = $input.item.json;\n\n// Define required fields\nconst requiredFields = ['machineId', 'temperature', 'vibration', 'pressure', 'timestamp'];\n\n// Check for missing required fields\nconst missingFields = requiredFields.filter(field => !(field in item));\nif (missingFields.length > 0) {\n  throw new Error(`Missing required fields: ${missingFields.join(', ')}`);\n}\n\n// Validate machineId (should be a non-empty string)\nif (typeof item.machineId !== 'string' || item.machineId.trim() === '') {\n  throw new Error('machineId must be a non-empty string');\n}\n\n// Validate temperature (should be a number between -50 and 200 degrees Celsius)\nif (typeof item.temperature !== 'number' || isNaN(item.temperature)) {\n  throw new Error('temperature must be a valid number');\n}\nif (item.temperature < -50 || item.temperature > 200) {\n  throw new Error('temperature must be between -50 and 200 degrees Celsius');\n}\n\n// Validate vibration (should be a number between 0 and 100 mm/s)\nif (typeof item.vibration !== 'number' || isNaN(item.vibration)) {\n  throw new Error('vibration must be a valid number');\n}\nif (item.vibration < 0 || item.vibration > 100) {\n  throw new Error('vibration must be between 0 and 100 mm/s');\n}\n\n// Validate pressure (should be a number between 0 and 1000 PSI)\nif (typeof item.pressure !== 'number' || isNaN(item.pressure)) {\n  throw new Error('pressure must be a valid number');\n}\nif (item.pressure < 0 || item.pressure > 1000) {\n  throw new Error('pressure must be between 0 and 1000 PSI');\n}\n\n// Validate timestamp (should be a valid date string or timestamp)\nconst timestamp = new Date(item.timestamp);\nif (isNaN(timestamp.getTime())) {\n  throw new Error('timestamp must be a valid date');\n}\n\n// Return validated data\nreturn {\n  json: {\n    machineId: item.machineId,\n    temperature: item.temperature,\n    vibration: item.vibration,\n    pressure: item.pressure,\n    timestamp: item.timestamp,\n    validatedAt: new Date().toISOString(),\n    status: 'valid'\n  }\n};"
+      },
+      "id": "3cfeef63-41a1-434f-9295-f57e737e6334",
+      "name": "Validate Sensor Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2032,
+        472
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json }}",
+        "options": {
+          "systemMessage": "You are a predictive maintenance AI model that analyzes machine sensor data to predict failure risk.\n\nYour task is to:\n1. Analyze the provided sensor data (temperature, vibration, pressure)\n2. Assess the risk of machine failure based on the sensor readings\n3. Return a JSON object with the following structure: {\"riskScore\": <number between 0 and 1>, \"riskLevel\": \"low|medium|high\", \"reasoning\": \"<explanation>\", \"recommendedAction\": \"<action>\"}\n\nConsider:\n- Temperature above 80°C indicates high risk\n- Vibration above 5mm/s indicates high risk\n- Pressure deviations beyond ±10% of normal indicate medium risk\n- Multiple anomalies compound the risk\n\nReturn ONLY valid JSON."
+        }
+      },
+      "id": "f1bf723c-8730-4924-b291-1483777810f8",
+      "name": "Predict Failure Risk",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -1808,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "id": "128a7ddc-4945-46de-af20-c96a16aa1367",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -1736,
+        592
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "YeBKvCIsOqpSoSGt",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "id-1",
+              "leftValue": "={{ $json.output }}",
+              "rightValue": "riskScore",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "id-2",
+              "leftValue": "={{ $json.riskScore }}",
+              "rightValue": "={{ $('Workflow Configuration').first().json.riskThreshold }}",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "061b232c-19d8-407d-8883-0099e4b3f941",
+      "name": "Check Risk Threshold",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1456,
+        472
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Workflow Configuration').first().json.erpApiUrl }}/maintenance-tickets",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "machineId",
+              "value": "={{ $('Validate Sensor Data').first().json.machineId }}"
+            },
+            {
+              "name": "riskData",
+              "value": "={{ $('Predict Failure Risk').first().json.riskData }}"
+            },
+            {
+              "name": "priority",
+              "value": "={{ $('Predict Failure Risk').first().json.priority }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "690040fb-3616-4df4-9eab-77ad2e5f6dfd",
+      "name": "Create Maintenance Ticket in ERP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -1232,
+        472
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "alerts@company.com",
+        "toEmail": "={{ $('Workflow Configuration').first().json.supervisorEmail }}",
+        "subject": "=URGENT: High Risk Machine Failure Detected - Machine {{ $('Validate Sensor Data').first().json.machineId }}",
+        "html": "=<h2>High Risk Machine Failure Alert</h2>\n<p><strong>Machine ID:</strong> {{ $('Validate Sensor Data').first().json.machineId }}</p>\n<p><strong>Risk Score:</strong> {{ $('Predict Failure Risk').first().json.riskScore }}</p>\n<p><strong>Risk Level:</strong> {{ $('Predict Failure Risk').first().json.riskLevel }}</p>\n<p><strong>AI Analysis:</strong></p>\n<p>{{ $('Predict Failure Risk').first().json.reasoning }}</p>\n<p><strong>Recommended Action:</strong></p>\n<p>{{ $('Predict Failure Risk').first().json.recommendedAction }}</p>\n<hr>\n<p><em>This alert was generated automatically by the Predictive Maintenance System.</em></p>",
+        "options": {}
+      },
+      "id": "584fad64-9931-4288-85fc-d6b4079d9f39",
+      "name": "Notify Supervisor via Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        -1008,
+        376
+      ],
+      "webhookId": "9190ace3-ee8b-431a-bb5d-0a6c267ed34c",
+      "credentials": {
+        "smtp": {
+          "id": "VdMvFFoD1sUHZkK0",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "C12345678"
+        },
+        "text": "=🚨 ALERT: High Risk Machine Failure Detected\n\nMachine ID: {{ $('Predict Failure Risk').item.json.machineId }}\nRisk Score: {{ $('Predict Failure Risk').item.json.riskScore }}\nRecommended Action: {{ $('Predict Failure Risk').item.json.recommendedAction }}\n\nPlease review and take immediate action.",
+        "otherOptions": {}
+      },
+      "id": "2b2499ca-e776-4d67-b70c-45cc562d4783",
+      "name": "Notify Supervisor via Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        -1008,
+        568
+      ],
+      "webhookId": "5ed15b1c-6f4a-46ac-a128-b6331358b49a",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "ofjpFWTuq335HJvq",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Workflow Configuration').first().json.dashboardApiUrl }}/downtime",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "machineId"
+            },
+            {
+              "name": "status"
+            },
+            {
+              "name": "riskLevel"
+            },
+            {
+              "name": "timestamp"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8cf9731b-fea4-4426-82e9-112a5b037c9c",
+      "name": "Update Downtime Dashboard",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -784,
+        472
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "quality-control-image",
+        "options": {}
+      },
+      "id": "a9f5625d-4801-45ba-8a9d-d494c69c95b6",
+      "name": "Quality Control Image Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -2480,
+        904
+      ],
+      "webhookId": "f499b7a0-09e7-463a-a9fe-b6f07dc1863d"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json }}",
+        "options": {
+          "systemMessage": "You are an AI quality control inspector that analyzes product images to detect defects.\n\nYour task is to:\n1. Analyze the provided product image\n2. Identify any defects, imperfections, or quality issues\n3. Classify the defect type (scratch, dent, discoloration, misalignment, dimensional error, etc.)\n4. Assess the severity (minor, moderate, critical)\n5. Return a JSON object with: {\"hasDefect\": <boolean>, \"defectType\": \"<type>\", \"severity\": \"<level>\", \"location\": \"<description>\", \"confidence\": <number 0-1>, \"recommendation\": \"<action>\"}\n\nReturn ONLY valid JSON."
+        }
+      },
+      "id": "4abb6973-e49b-43f6-a3b4-7d28b0f77139",
+      "name": "AI Defect Detection",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -2256,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "id",
+          "value": "gpt-4o"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "id": "e5131f38-14e6-48a8-a823-e9c0d7734425",
+      "name": "OpenAI Vision Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -2184,
+        1024
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "YeBKvCIsOqpSoSGt",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Workflow Configuration').first().json.erpApiUrl }}/rework-jobs",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "productId",
+              "value": "={{ $('AI Defect Detection').item.json.productId }}"
+            },
+            {
+              "name": "defectData",
+              "value": "={{ $('AI Defect Detection').item.json.defectData }}"
+            },
+            {
+              "name": "priority",
+              "value": "={{ $('AI Defect Detection').item.json.priority }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $now().toISO() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5d5518ce-9df0-4098-9a91-6aeeaa767ce2",
+      "name": "Create Rework Job",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -1904,
+        904
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "quality@company.com",
+        "toEmail": "={{ $('Workflow Configuration').first().json.qualityEngineerEmail }}",
+        "subject": "=Quality Alert: Defect Detected - Product {{ $('Quality Control Image Webhook').first().json.productId }}",
+        "html": "=<h2>Quality Alert: Defect Detected</h2>\n<p><strong>Product ID:</strong> {{ $('Quality Control Image Webhook').first().json.productId }}</p>\n<p><strong>Defect Type:</strong> {{ $('AI Defect Detection').first().json.defectType }}</p>\n<p><strong>Severity:</strong> {{ $('AI Defect Detection').first().json.severity }}</p>\n<p><strong>Location:</strong> {{ $('AI Defect Detection').first().json.location }}</p>\n<p><strong>Confidence:</strong> {{ $('AI Defect Detection').first().json.confidence }}%</p>\n<p><strong>Recommendation:</strong> {{ $('AI Defect Detection').first().json.recommendation }}</p>",
+        "options": {}
+      },
+      "id": "ca0ff799-148b-4ae6-83dc-207a639c95d1",
+      "name": "Notify Quality Engineer",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        -1680,
+        808
+      ],
+      "webhookId": "bf34242e-7ff9-4ea2-bf97-2a98a5a21c5e",
+      "credentials": {
+        "smtp": {
+          "id": "VdMvFFoD1sUHZkK0",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Workflow Configuration').first().json.dashboardApiUrl }}/defects",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "productId",
+              "value": "={{ $('AI Defect Detection').item.json.productId }}"
+            },
+            {
+              "name": "defectData",
+              "value": "={{ $('AI Defect Detection').item.json.defectData }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}"
+            },
+            {
+              "name": "reworkJobId",
+              "value": "={{ $('Create Rework Job').item.json.jobId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "34b2d459-915a-4579-b6fe-5ffb79f3ed8d",
+      "name": "Log Defect Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -1680,
+        1000
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "customer-order",
+        "options": {}
+      },
+      "id": "9e758bad-638b-4f1f-85ae-73641d6e056c",
+      "name": "Customer Order Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -2480,
+        1336
+      ],
+      "webhookId": "8efe1071-128c-4bbb-99ac-594564acf18e"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json }}",
+        "options": {
+          "systemMessage": "You are a production planning and scheduling optimization AI.\n\nYour task is to:\n1. Analyze the customer order details (products, quantities, deadlines)\n2. Consider current production capacity, resource availability, and existing schedules\n3. Optimize the production schedule to meet the delivery deadline\n4. Calculate the estimated delivery date\n5. Return a JSON object with: {\"orderId\": \"<id>\", \"scheduledStartDate\": \"<date>\", \"scheduledEndDate\": \"<date>\", \"estimatedDeliveryDate\": \"<date>\", \"productionLine\": \"<line>\", \"priority\": \"<level>\", \"notes\": \"<any constraints or considerations>\"}\n\nConsider:\n- Lead times for materials\n- Machine availability\n- Labor capacity\n- Quality control time\n- Buffer time for contingencies\n\nReturn ONLY valid JSON."
+        }
+      },
+      "id": "e83794f7-f669-4227-99ad-4a43ca89f51c",
+      "name": "Optimize Schedule",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -2256,
+        1336
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "id": "12c47b81-2f6a-4586-a267-594dee73bbbd",
+      "name": "OpenAI Planning Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -2184,
+        1560
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "YeBKvCIsOqpSoSGt",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('Workflow Configuration').first().json.erpApiUrl }}/orders",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "orderId"
+            },
+            {
+              "name": "scheduleData"
+            },
+            {
+              "name": "status"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7357a102-0d7b-4bc5-9f8f-00b0d3ba83e4",
+      "name": "Update ERP System",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -1904,
+        1336
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "orders@company.com",
+        "toEmail": "={{ $('Customer Order Webhook').first().json[$('Workflow Configuration').first().json.customerEmailField] }}",
+        "subject": "Order Confirmation - Estimated Delivery Date",
+        "html": "=<h2>Order Confirmation</h2>\n\n<p>Dear Customer,</p>\n\n<p>Thank you for your order. We are pleased to confirm the following details:</p>\n\n<p><strong>Order ID:</strong> {{ $('Customer Order Webhook').first().json.orderId }}</p>\n\n<p><strong>Estimated Delivery Date:</strong> {{ $('Optimize Schedule').first().json.estimatedDeliveryDate }}</p>\n\n<p><strong>Scheduled Production Dates:</strong> {{ $('Optimize Schedule').first().json.scheduledProductionDates }}</p>\n\n<p><strong>Notes:</strong> {{ $('Optimize Schedule').first().json.notes || 'No additional notes' }}</p>\n\n<p>If you have any questions, please don't hesitate to contact us.</p>\n\n<p>Best regards,<br>Your Production Team</p>",
+        "options": {}
+      },
+      "id": "a02482bb-096a-4097-9328-26ad19de5892",
+      "name": "Send Delivery Date to Customer",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        -1680,
+        1240
+      ],
+      "webhookId": "10298eea-b0ce-45bb-b5f9-69bcf08be9af",
+      "credentials": {
+        "smtp": {
+          "id": "VdMvFFoD1sUHZkK0",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Workflow Configuration').first().json.dashboardApiUrl }}/planning",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "orderId",
+              "value": "={{ $('Customer Order Webhook').first().json.orderId }}"
+            },
+            {
+              "name": "scheduleData",
+              "value": "={{ $('Optimize Schedule').first().json.scheduleData }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4555dc79-23ea-41cf-837c-cb3947606741",
+      "name": "Refresh Planning Dashboard",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -1680,
+        1432
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Maintenance Sensor Data Webhook": {
+      "main": [
+        [
+          {
+            "node": "Workflow Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow Configuration": {
+      "main": [
+        [
+          {
+            "node": "Validate Sensor Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Sensor Data": {
+      "main": [
+        [
+          {
+            "node": "Predict Failure Risk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Predict Failure Risk",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Predict Failure Risk": {
+      "main": [
+        [
+          {
+            "node": "Check Risk Threshold",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Risk Threshold": {
+      "main": [
+        [
+          {
+            "node": "Create Maintenance Ticket in ERP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Maintenance Ticket in ERP": {
+      "main": [
+        [
+          {
+            "node": "Notify Supervisor via Email",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notify Supervisor via Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Supervisor via Email": {
+      "main": [
+        [
+          {
+            "node": "Update Downtime Dashboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Supervisor via Slack": {
+      "main": [
+        [
+          {
+            "node": "Update Downtime Dashboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Quality Control Image Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Defect Detection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Vision Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Defect Detection",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Defect Detection": {
+      "main": [
+        [
+          {
+            "node": "Create Rework Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Rework Job": {
+      "main": [
+        [
+          {
+            "node": "Notify Quality Engineer",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Defect Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Customer Order Webhook": {
+      "main": [
+        [
+          {
+            "node": "Optimize Schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Planning Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Optimize Schedule",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Optimize Schedule": {
+      "main": [
+        [
+          {
+            "node": "Update ERP System",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update ERP System": {
+      "main": [
+        [
+          {
+            "node": "Send Delivery Date to Customer",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Refresh Planning Dashboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "4bfbd254-875c-4f47-8365-caed9c5a1576",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "eb9e17a2c15d76b81440657aadae274cf8a8dcdb5f99cfa3ee2503810ad2529b"
+  },
+  "id": "GNwrR5HzeuQW5bvZ",
+  "tags": []
+}
